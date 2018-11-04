@@ -1,0 +1,18 @@
+package main
+
+// User struct
+//ultimate:sql
+type User struct {
+	id        int64  `ultimate:"id,criteria"`
+	name      string `ultimate:"name,criteria"`
+	ignoreOne string
+	ignoreTwo string `json:"ignore-two"`
+}
+
+// Group struct
+//ultimate:mongo
+type Group struct {
+	id    int64   `ultimate:"id"`
+	name  string  `ultimate:"name,criteria"`
+	users []*User `ultimate:"users,aggregate"`
+}
