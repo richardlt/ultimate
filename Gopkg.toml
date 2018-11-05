@@ -34,5 +34,7 @@
   version = "0.8.0"
 
 [[constraint]]
-  name = "github.com/fatih/structtag"
-  version = "1.0.0"
+  branch = "master"
+  name = "github.com/fsamin/go-typeparser"
+  source = "github.com/richardlt/go-typeparser"
+

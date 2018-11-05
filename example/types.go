@@ -6,8 +6,10 @@ type User struct {
 	id        int64  `ultimate:"id,criteria"`
 	name      string `ultimate:"name,criteria"`
 	ignoreOne string
-	ignoreTwo string `json:"ignore-two"`
+	IgnoreTwo string `json:"ignore-two"`
 }
+
+//  unknown
 
 // Group struct
 //ultimate:mongo

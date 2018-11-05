@@ -2,15 +2,11 @@ package main
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/fatih/structtag"
+	typeparser "github.com/fsamin/go-typeparser"
 	"github.com/pkg/errors"
 	"github.com/richardlt/ultimate"
 )
@@ -28,50 +24,30 @@ func main() {
 }
 
 func parse(path string) error {
-	src, err := ioutil.ReadFile(path)
-	if err != nil {
-		return errors.Wrapf(err, "cannot read file at '%s'", path)
-	}
-
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+	ts, err := typeparser.Parse(path)
 	if err != nil {
 		return errors.Wrapf(err, "cannot parse file at '%s'", path)
 	}
 
-	structs := make(map[string]*ast.StructType)
-	comments := make(map[string]string)
-	var comment string
-	ast.Inspect(file, func(n ast.Node) bool {
-		switch v := n.(type) {
-		case *ast.Comment:
-			if strings.HasPrefix(v.Text, "//ultimate") {
-				comment = v.Text
-			}
-		case *ast.TypeSpec:
-			if s, ok := v.Type.(*ast.StructType); ok {
-				structs[v.Name.Name] = s
-				comments[v.Name.Name] = comment
-				comment = ""
-				return false
-			}
-		default:
-			if v != nil && comment != "" {
-				comment = ""
-			}
-		}
-		return true
-	})
-
 	var crs []*ultimate.Criteria
 
-	for n, s := range structs {
-		if comments[n] != "" {
-			cr, err := extractCriteria(src, n, comments[n], s)
-			if err != nil {
-				return errors.Wrapf(err, "cannot generate criteria for struct '%s'", n)
+	for _, t := range ts {
+		var commentCriteria string
+		for _, d := range t.Docs() {
+			if strings.Contains(d, "ultimate") {
+				commentCriteria = d
+				break
 			}
-			crs = append(crs, cr)
+		}
+		if commentCriteria != "" {
+			split := strings.Split(commentCriteria, ":")
+			if len(split) == 2 {
+				cr, err := extractCriteria(split[1], t)
+				if err != nil {
+					return errors.Wrapf(err, "cannot generate criteria for struct '%s'", t.Name())
+				}
+				crs = append(crs, cr)
+			}
 		}
 	}
 
@@ -86,44 +62,25 @@ func parse(path string) error {
 	return nil
 }
 
-func extractCriteria(src []byte, name, comment string, s *ast.StructType) (*ultimate.Criteria, error) {
-	split := strings.Split(comment, ":")
-	if len(split) != 2 {
-		return nil, errors.Errorf("invalid ultimate comment value for struct %s", name)
-	}
-
-	ct, err := ultimate.ParseCriteriaType(split[1])
+func extractCriteria(criteriaType string, t typeparser.Type) (*ultimate.Criteria, error) {
+	ct, err := ultimate.ParseCriteriaType(criteriaType)
 	if err != nil {
 		return nil, err
 	}
 
-	c := ultimate.NewCriteria(name, ct)
+	c := ultimate.NewCriteria(t.Name(), ct)
 
-	for _, field := range s.Fields.List {
-		if field.Tag == nil {
+	for _, field := range t.Fields() {
+		opts := field.TagValue("ultimate")
+		if len(opts) < 2 || opts[1] != "criteria" {
 			continue
 		}
 
-		name := field.Names[0].Name
-
-		ts, err := structtag.Parse(strings.Replace(field.Tag.Value, "`", "", -1))
+		fieldType, err := ultimate.ParseCriteriaFieldType(field.Type())
 		if err != nil {
-			return nil, errors.Wrapf(err, "cannot parse tags for field '%s'", name)
+			return nil, err
 		}
-
-		tag, err := ts.Get("ultimate")
-		if err == nil {
-			for _, o := range tag.Options {
-				if o == "criteria" {
-					start, end := field.Type.Pos()-1, field.Type.End()-1
-					fieldType, err := ultimate.ParseCriteriaFieldType(string(src[start:end]))
-					if err != nil {
-						return nil, err
-					}
-					c.AddField(tag.Name, fieldType)
-				}
-			}
-		}
+		c.AddField(opts[0], fieldType)
 	}
 
 	return &c, nil

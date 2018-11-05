@@ -2,12 +2,13 @@
 
 
 [[projects]]
-  digest = "1:060e2ff7ee3e51b4a0fadf46308033bfe3b8030af6a8078ec26916e2e9b2fdc3"
-  name = "github.com/fatih/structtag"
+  branch = "master"
+  digest = "1:806e7d0a83ddc865f9421f52d7bde67c03c963086ace022494b6c5b103da8347"
+  name = "github.com/fsamin/go-typeparser"
   packages = ["."]
   pruneopts = "UT"
-  revision = "76ae1d6d2117609598c7d4e8f3e938145f204e8f"
-  version = "v1.0.0"
+  revision = "461cc586ebcb374734001437a4de39553581fd09"
+  source = "github.com/richardlt/go-typeparser"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -21,7 +22,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/fatih/structtag",
+    "github.com/fsamin/go-typeparser",
     "github.com/pkg/errors",
   ]
   solver-name = "gps-cdcl"

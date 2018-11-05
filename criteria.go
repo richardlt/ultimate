@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/alecthomas/template"
+	"html/template"
+
 	"github.com/pkg/errors"
 )
 
