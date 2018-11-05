@@ -2,34 +2,22 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	typeparser "github.com/fsamin/go-typeparser"
 	"github.com/pkg/errors"
-	"github.com/richardlt/ultimate"
 )
 
-func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("missing path of files to parse")
-	}
-	for _, p := range os.Args[1:] {
-		log.Printf("parsing file at '%s'", p)
-		if err := parse(p); err != nil {
-			log.Fatalf("%v", err)
-		}
-	}
-}
-
-func parse(path string) error {
+func parse(path, dest, packageName string) error {
 	ts, err := typeparser.Parse(path)
 	if err != nil {
 		return errors.Wrapf(err, "cannot parse file at '%s'", path)
 	}
 
-	var crs []*ultimate.Criteria
+	var crs []*criteria
 
 	for _, t := range ts {
 		var commentCriteria string
@@ -51,24 +39,36 @@ func parse(path string) error {
 		}
 	}
 
+	f := newFile(packageName)
 	for _, cr := range crs {
-		src, err := cr.Generate()
+		src, err := cr.generate()
 		if err != nil {
 			return err
 		}
-		fmt.Println(src)
+		f.Criteria = append(f.Criteria, src)
+	}
+	src, err := f.generate()
+	if err != nil {
+		return err
+	}
+
+	_, fileName := filepath.Split(path)
+	fileName = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	filePath := fmt.Sprintf("%s/%s.criteria.go", dest, fileName)
+	if err := ioutil.WriteFile(filePath, []byte(src), os.ModePerm); err != nil {
+		return errors.Wrapf(err, "cannot write file for criteria at %s", dest)
 	}
 
 	return nil
 }
 
-func extractCriteria(criteriaType string, t typeparser.Type) (*ultimate.Criteria, error) {
-	ct, err := ultimate.ParseCriteriaType(criteriaType)
+func extractCriteria(criteriaType string, t typeparser.Type) (*criteria, error) {
+	ct, err := parseCriteriaType(criteriaType)
 	if err != nil {
 		return nil, err
 	}
 
-	c := ultimate.NewCriteria(t.Name(), ct)
+	c := newCriteria(t.Name(), ct)
 
 	for _, field := range t.Fields() {
 		opts := field.TagValue("ultimate")
@@ -76,11 +76,11 @@ func extractCriteria(criteriaType string, t typeparser.Type) (*ultimate.Criteria
 			continue
 		}
 
-		fieldType, err := ultimate.ParseCriteriaFieldType(field.Type())
+		fieldType, err := parseCriteriaFieldType(field.Type())
 		if err != nil {
 			return nil, err
 		}
-		c.AddField(opts[0], fieldType)
+		c.addField(opts[0], fieldType)
 	}
 
 	return &c, nil

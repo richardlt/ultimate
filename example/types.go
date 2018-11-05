@@ -9,8 +9,6 @@ type User struct {
 	IgnoreTwo string `json:"ignore-two"`
 }
 
-//  unknown
-
 // Group struct
 //ultimate:mongo
 type Group struct {
